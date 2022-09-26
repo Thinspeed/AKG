@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using AKG.Math;
+
+namespace AKG
+{
+    public class Vertex
+    {
+        public Vertex(int position, Vec3 texture, Vec3 normal)
+        {
+            Position = position;
+            Texture = texture;
+            Normal = normal;
+        }
+
+        public int Position { get; set; }
+
+        public Vec3 Texture { get; set; }
+
+        public Vec3 Normal { get; set; }
+    }
+}
