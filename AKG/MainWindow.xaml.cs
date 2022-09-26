@@ -46,7 +46,6 @@ namespace AKG
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool GetCursorPos(out POINT pt);
 
-        private DispatcherTimer inputTimer;
 		private bool initial = true;
 
 		private List<Polygon> model;
@@ -91,16 +90,6 @@ namespace AKG
 			rotate = Mat4.CreateRotationY(0.01);
 			MultiplyPositions();
 
-			inputTimer = new DispatcherTimer();
-			inputTimer.Interval = TimeSpan.FromMilliseconds(1000 / 60);
-			inputTimer.Tick += (object? sender, EventArgs e) =>
-			{
-				ProcessMouseInput();
-				ProcessKeyboardInput();
-                DrawModel();
-            };
-
-			inputTimer.Start();
 		}
 
 		unsafe private void DrawModel()
