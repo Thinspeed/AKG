@@ -1,6 +1,6 @@
 ﻿namespace AKG.Math
 {
-	public struct Vec3 : ICloneable
+	public class Vec3 : ICloneable
 	{
 		public Vec3()
 			: this(0, 0, 0)
