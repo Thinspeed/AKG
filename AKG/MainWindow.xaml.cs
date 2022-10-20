@@ -63,7 +63,7 @@ namespace AKG
 
 		private double horizontalAngle = -System.Math.PI / 2;
 		private double verticalAngle = 0;
-		private double mouseSpeed = 0.001;
+		private double mouseSpeed = 0.0002;
 		private double speed = 1;
 
 		public MainWindow()
