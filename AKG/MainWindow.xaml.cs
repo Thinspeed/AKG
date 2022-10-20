@@ -75,6 +75,7 @@ namespace AKG
 
 			model = Parser.ParserObj("D:\\Tails.obj");
 			positions = Parser.VertexPositions.AsParallel();
+			FindLines();
 
 			cameraPos = new Vec3(100, 4, 0);
 			target = new Vec3(
@@ -132,6 +133,11 @@ namespace AKG
             var watch = new Stopwatch();
             watch.Start();
 			watch.Stop();
+			for (int i = 0; i < lines.Count; i++)
+			{
+				DrawLine(multipliedPostions[lines[i].first], multipliedPostions[lines[i].second], bmp);
+			}
+
 			//Console.WriteLine(watch.Elapsed.TotalMilliseconds);
 			bmp.AddDirtyRect(new Int32Rect(0, 0, 1920, 1080));
 			bmp.Unlock();
@@ -265,7 +271,7 @@ namespace AKG
 
 			public int GetHashCode([DisallowNull] (int, int) obj)
 			{
-				return obj.Item1 * 97 + obj.Item2;
+				return obj.Item1+ obj.Item2;
 			}
 		}
 
