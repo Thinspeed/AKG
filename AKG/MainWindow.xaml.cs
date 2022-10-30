@@ -129,9 +129,22 @@ namespace AKG
 		{
 			WriteableBitmap bmp = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);
 			bmp.Lock();
-			for (int i = 0; i < lines.Count; i++)
+            var lines = new HashSet<(int first, int second)>(new LinesEqualityComparer());
+            for (int i = 0; i < model.Count; i++)
 			{
-				DrawLine(multipliedPostions[lines[i].first], multipliedPostions[lines[i].second], bmp);
+				Vec4 first = multipliedPostions[model[i].Vertices[0].Position];
+				for (int j = 1; j < model[i].Vertices.Count; j++)
+				{
+					Vec4 second = multipliedPostions[model[i].Vertices[j].Position];
+					if (!lines.Contains((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position)))
+					{
+                        DrawLine(first, second, bmp);
+						lines.Add((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position));
+                    }
+
+					
+					second = first;
+				}
 			}
 
 			bmp.AddDirtyRect(new Int32Rect(0, 0, 1920, 1080));
@@ -177,7 +190,6 @@ namespace AKG
 
 		private void FindLines()
 		{
-			//var lines = new List<(int first, int second)>();
 			var set = new HashSet<(int first, int second)>(new LinesEqualityComparer());
 			for (int i = 0; i < model.Count; i++)
             {
