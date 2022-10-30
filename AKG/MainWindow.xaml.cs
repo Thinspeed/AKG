@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -52,6 +53,7 @@ namespace AKG
 		private List<Polygon> model;
 		private ParallelQuery<Vec4> positions;
 		private List<Vec4> multipliedPostions;
+		private List<(int first, int second)> lines;
 		private Mat4 view;
 		private Mat4 projection;
 		private Mat4 viewPort;
@@ -61,10 +63,11 @@ namespace AKG
 		private Vec3 right;
 		private Vec3 up;
 
+		private bool isChanged = false;
 		private double horizontalAngle = -System.Math.PI / 2;
 		private double verticalAngle = 0;
-		private double mouseSpeed = 0.0002;
-		private double speed = 1;
+		private double mouseSpeed = 0.0001;
+		private double speed = 0.4;
 
 		public MainWindow()
 		{
@@ -72,6 +75,7 @@ namespace AKG
 
 			model = Parser.ParserObj("D:\\Tails.obj");
 			positions = Parser.VertexPositions.AsParallel();
+			FindLines();
 
 			cameraPos = new Vec3(100, 4, 0);
 			target = new Vec3(
@@ -95,10 +99,28 @@ namespace AKG
 			inputTimer.Interval = TimeSpan.FromMilliseconds(1000 / 60);
 			inputTimer.Tick += (object? sender, EventArgs e) =>
 			{
+				var watch = new Stopwatch();
+				watch.Start();
 				ProcessMouseInput();
+				watch.Stop();
+				double a = watch.Elapsed.TotalMilliseconds;
+				watch.Restart();
 				ProcessKeyboardInput();
-                DrawModel();
-            };
+				watch.Stop();
+				double b = watch.Elapsed.TotalMilliseconds;
+				watch.Restart();
+				if (isChanged)
+				{
+					view = Mat4.CreateView(cameraPos, cameraPos + target, up);
+					MultiplyPositions();
+					isChanged = false;
+				}
+
+				DrawModel();
+				watch.Stop();
+				double c = watch.Elapsed.TotalMilliseconds;
+				Console.WriteLine($"{a} {b} {c}");
+			};
 
 			inputTimer.Start();
 		}
@@ -107,15 +129,9 @@ namespace AKG
 		{
 			WriteableBitmap bmp = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);
 			bmp.Lock();
-			for (int i = 0; i < model.Count; i++)
+			for (int i = 0; i < lines.Count; i++)
 			{
-				Vec4 firstPoint = multipliedPostions[model[i][model[i].Count - 1].Position];
-				for (int j = 0; j < model[i].Count; j++)
-				{
-					Vec4 secondPoint = multipliedPostions[model[i][j].Position];
-					DrawLine(firstPoint, secondPoint, bmp);
-					firstPoint = secondPoint;
-				}
+				DrawLine(multipliedPostions[lines[i].first], multipliedPostions[lines[i].second], bmp);
 			}
 
 			bmp.AddDirtyRect(new Int32Rect(0, 0, 1920, 1080));
@@ -159,6 +175,24 @@ namespace AKG
 				.ToList();
 		}
 
+		private void FindLines()
+		{
+			//var lines = new List<(int first, int second)>();
+			var set = new HashSet<(int first, int second)>(new LinesEqualityComparer());
+			for (int i = 0; i < model.Count; i++)
+            {
+                int point1 = model[i][model[i].Count - 1].Position;
+                for (int j = 0; j < model[i].Count; j++)
+                {
+                    int point2 = model[i][j].Position;
+					set.Add((point1, point2));
+                    point1 = point2;
+                }
+            }
+
+			lines = set.ToList();
+        }
+
 		private void ProcessMouseInput()
 		{
 			if (initial)
@@ -190,8 +224,7 @@ namespace AKG
                 System.Math.Cos(horizontalAngle - System.Math.PI / 2));
 
             up = right * target;
-            view = Mat4.CreateView(cameraPos, cameraPos + target, up);
-            MultiplyPositions();
+            isChanged = true;
             SetCursorPos((int)(this.Width / 2), (int)(this.Height / 2));
         }
 
@@ -214,14 +247,32 @@ namespace AKG
             {
                 deltaPos += target * speed;
             }
+			if (Keyboard.GetKeyStates(Key.Escape) == KeyStates.Down)
+			{
+				this.Close();
+			}
 
 			if (deltaPos.X != 0 || deltaPos.Y != 0 || deltaPos.Z != 0)
 			{
 				cameraPos += deltaPos;
                 up = right * target;
-                view = Mat4.CreateView(cameraPos, cameraPos + target, up);
-                MultiplyPositions();
+				isChanged = true;
             }
         }
+
+		class LinesEqualityComparer : IEqualityComparer<(int, int)>
+		{
+			public bool Equals((int, int) x, (int, int) y)
+			{
+				return (x.Item1 == y.Item1 && x.Item2 == y.Item2) ||
+					(x.Item1 == y.Item2 && x.Item2 == y.Item1);
+			}
+
+			public int GetHashCode([DisallowNull] (int, int) obj)
+			{
+				return obj.Item1+ obj.Item2;
+			}
+		}
+
 	}
 }

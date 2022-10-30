@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AKG.Math
 {
-	public struct Vec4 : ICloneable
+	public class Vec4 : ICloneable
 	{
 		public Vec4()
 			: this(0, 0, 0, 0)
