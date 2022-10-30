@@ -16,6 +16,9 @@ namespace AKG
             Normal = normal;
         }
 
+        /// <summary>
+        /// Returns index of position
+        /// </summary>
         public int Position { get; set; }
 
         public Vec3 Texture { get; set; }
