@@ -29,7 +29,17 @@ namespace AKG.Math
 
 		public double W { get; set; }
 
-		public object Clone()
+        public static Vec4 operator +(Vec4 lvalue, Vec4 rvalue)
+        {
+            return new Vec4(lvalue.X + rvalue.X, lvalue.Y + rvalue.Y, lvalue.Z + rvalue.Z, lvalue.W + rvalue.W);
+        }
+
+        public static Vec4 operator +(Vec4 vec, double denominator)
+        {
+            return new Vec4(vec.X / denominator, vec.Y / denominator, vec.Z / denominator, vec.W / denominator);
+        }
+
+        public object Clone()
 		{
 			return new Vec4(X, Y, Z, W);
 		}

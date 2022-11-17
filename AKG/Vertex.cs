@@ -9,7 +9,7 @@ namespace AKG
 {
     public class Vertex
     {
-        public Vertex(int position, Vec3 texture, Vec3 normal)
+        public Vertex(int position, Vec3 texture, int normal)
         {
             Position = position;
             Texture = texture;
@@ -23,6 +23,6 @@ namespace AKG
 
         public Vec3 Texture { get; set; }
 
-        public Vec3 Normal { get; set; }
+        public int Normal { get; set; }
     }
 }

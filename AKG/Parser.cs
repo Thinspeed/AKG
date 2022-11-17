@@ -57,7 +57,7 @@ namespace AKG
                         vertecies.Add(new Vertex(
                             indecies.pos - 1,
                             indecies.tex == 0 ? new Vec3() : VertexTexture[indecies.tex - 1],
-                            indecies.norm == 0 ? new Vec3() : VertexNormals[indecies.norm - 1]));
+                            indecies.norm - 1));
                     }
 
                     polygons.Add(new Polygon(vertecies));

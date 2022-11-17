@@ -48,6 +48,11 @@
 			return new Vec3(lvalue.X - rvalue.X, lvalue.Y - rvalue.Y, lvalue.Z - rvalue.Z);
 		}
 
+		public static Vec3 operator -(Vec3 vec)
+		{
+			return new Vec3(-vec.X, -vec.Y, -vec.Z);
+		}
+
 		public static Vec3 operator *(Vec3 lvalue, Vec3 rvalue)
 		{
 			return new Vec3(
