@@ -53,7 +53,6 @@ namespace AKG
 		private List<Polygon> model;
 		private ParallelQuery<Vec4> positions;
 		private List<Vec4> multipliedPostions;
-		private List<(int first, int second)> lines;
 		private Mat4 view;
 		private Mat4 projection;
 		private Mat4 viewPort;
@@ -75,9 +74,8 @@ namespace AKG
 
 			model = Parser.ParserObj("D:\\Tails.obj");
 			positions = Parser.VertexPositions.AsParallel();
-			FindLines();
 
-			cameraPos = new Vec3(100, 4, 0);
+			cameraPos = new Vec3(100, 1, 1);
 			target = new Vec3(
 				System.Math.Cos(verticalAngle) * System.Math.Sin(horizontalAngle),
 				System.Math.Sin(verticalAngle),
@@ -125,6 +123,34 @@ namespace AKG
 			inputTimer.Start();
 		}
 
+		private List<(Vec4, Vec4)> GetLines(int index1, int index2, int index3)
+		{
+			var list = new List<(Vec4, Vec4)>();
+			var point1 = multipliedPostions[index1];
+			var point2 = multipliedPostions[index2];
+			var point3 = multipliedPostions[index3];
+			double deltaX1 = point3.X - point1.X;
+			double deltaX2 = point3.X - point2.X;
+			double deltaY1 = point3.Y - point1.Y;
+			double deltaY2 = point3.Y - point2.Y;
+            int l1 = System.Math.Abs(deltaX1) > System.Math.Abs(deltaY1) ? (int)System.Math.Abs(deltaX1) : (int)System.Math.Abs(deltaY1);
+            int l2 = System.Math.Abs(deltaX2) > System.Math.Abs(deltaY2) ? (int)System.Math.Abs(deltaX2) : (int)System.Math.Abs(deltaY2);
+			int l = System.Math.Max(l1, l2);
+
+            double x1 = point1.X, x2 = point2.X, y1 = point1.Y, y2 = point2.Y;
+
+			for (int i = 0; i < l; i++)
+			{
+				list.Add((new Vec4(x1, y1, 0, 0), new Vec4(x2, y2, 0, 0)));
+				x1 += deltaX1 / l;
+				x2 += deltaX2 / l;
+				y1 += deltaY1 / l;
+				y2 += deltaY2 / l;
+			}
+
+            return list;
+		}
+
 		unsafe private void DrawModel()
 		{
 			WriteableBitmap bmp = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);
@@ -142,9 +168,13 @@ namespace AKG
 						lines.Add((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position));
                     }
 
-					
-					second = first;
+					first = second;
 				}
+
+				//foreach (var line in GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position))
+				//{
+				//	DrawLine(line.Item1, line.Item2, bmp);
+				//}
 			}
 
 			bmp.AddDirtyRect(new Int32Rect(0, 0, 1920, 1080));
@@ -187,23 +217,6 @@ namespace AKG
 				})
 				.ToList();
 		}
-
-		private void FindLines()
-		{
-			var set = new HashSet<(int first, int second)>(new LinesEqualityComparer());
-			for (int i = 0; i < model.Count; i++)
-            {
-                int point1 = model[i][model[i].Count - 1].Position;
-                for (int j = 0; j < model[i].Count; j++)
-                {
-                    int point2 = model[i][j].Position;
-					set.Add((point1, point2));
-                    point1 = point2;
-                }
-            }
-
-			lines = set.ToList();
-        }
 
 		private void ProcessMouseInput()
 		{
