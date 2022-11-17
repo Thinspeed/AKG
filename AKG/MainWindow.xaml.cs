@@ -49,6 +49,7 @@ namespace AKG
 
         private DispatcherTimer inputTimer;
 		private bool initial = true;
+		private double[,] zBuffer = new double[1080, 1920];
 
 		private List<Polygon> model;
 		private ParallelQuery<Vec4> positions;
@@ -154,6 +155,14 @@ namespace AKG
 		unsafe private void DrawModel()
 		{
 			WriteableBitmap bmp = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);
+			for (int y = 0; y < 1080; y++)
+			{
+				for (int x = 0; x < 1920; x++)
+				{
+					zBuffer[y, x] = -1;
+				}
+			}
+
 			bmp.Lock();
             var lines = new HashSet<(int first, int second)>(new LinesEqualityComparer());
             for (int i = 0; i < model.Count; i++)
@@ -186,19 +195,26 @@ namespace AKG
 		{
 			double deltaX = point2.X - point1.X;
 			double deltaY = point2.Y - point1.Y;
+			double deltaZ = point2.Z - point1.Z;
 			int l = System.Math.Abs(deltaX) > System.Math.Abs(deltaY) ? (int)System.Math.Abs(deltaX) : (int)System.Math.Abs(deltaY);
 			double x = point1.X;
 			double y = point1.Y;
+			double z = point1.Z;
 			for (int i = 0; i < l; i++)
 			{
-				if (x > 0 && x < bmp.Width && y > 0 && y < bmp.Height)
+				if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
 				{
-					byte *p = (byte*)bmp.BackBuffer + ((int)y * bmp.BackBufferStride) + ((int)x * 3);
-					p[2] = 255;
+					if (zBuffer[(int)y, (int)x] == -1 || zBuffer[(int)y, (int)x] > z)
+					{
+                        byte* p = (byte*)bmp.BackBuffer + ((int)y * bmp.BackBufferStride) + ((int)x * 3);
+                        p[2] = 255;
+						zBuffer[(int)y, (int)x] = z;
+                    }
 				}
 
 				x += deltaX / l;
 				y += deltaY / l;
+				z += deltaZ / l;
 			}
 		}
 
