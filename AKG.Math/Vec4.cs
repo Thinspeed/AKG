@@ -34,10 +34,15 @@ namespace AKG.Math
             return new Vec4(lvalue.X + rvalue.X, lvalue.Y + rvalue.Y, lvalue.Z + rvalue.Z, lvalue.W + rvalue.W);
         }
 
-        public static Vec4 operator +(Vec4 vec, double denominator)
+        public static Vec4 operator /(Vec4 vec, double denominator)
         {
             return new Vec4(vec.X / denominator, vec.Y / denominator, vec.Z / denominator, vec.W / denominator);
         }
+
+		public static explicit operator Vec3(Vec4 vec)
+		{
+			return new Vec3(vec.X, vec.Y, vec.Z);
+		}
 
         public object Clone()
 		{
