@@ -59,17 +59,17 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(200, 0, 0);	
+		private Vec3 cameraPos = new Vec3(0, 0, -50);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light = new Vec3(20, 20, 10);
+		private Vec3 light = new Vec3(20, 20, -20);
 
 		private bool isChanged = false;
-		private double horizontalAngle = -System.Math.PI / 2;
+		private double horizontalAngle = 0;
 		private double verticalAngle = 0;
 		private double mouseSpeed = 0.0001;
-		private double speed = 0.4;
+		private double speed = 1;
 
 		public MainWindow()
 		{
@@ -107,7 +107,7 @@ namespace AKG
 
 			up = right * target;
 			view = Mat4.CreateView(cameraPos, cameraPos + target, up);
-			projection = Mat4.CreatePerspective(0.1 / 9 * 16, 0.1, 0.1, 200);
+			projection = Mat4.CreatePerspective(1920f / 1080, 1, 0.5, 200);
 			viewPort = Mat4.CreateViewPort(1920, 1080, 0, 0);
 			rotate = Mat4.CreateRotationY(0.01);
 			MultiplyPositions();
@@ -194,19 +194,16 @@ namespace AKG
                 Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] +
                     normals[model[i].Vertices[2].Normal]) / 3;
 				
-				if (Vec3.MultiplyScalar(normal, (Vec3)cameraPos + target) < 0)
-				{
-					continue;
-				}
+				//if (Vec3.MultiplyScalar(normal, (Vec3)cameraPos + target) < 0)
+				//{
+				//	continue;
+				//}
 
                 Vec4 pos = (positions[model[i].Vertices[0].Position] + positions[model[i].Vertices[1].Position] +
                     positions[model[i].Vertices[2].Position]) / 3;
                 Vec3 lightDir = Vec3.Normalize(light - (Vec3)pos);
                 double a = Vec3.MultiplyScalar(normal, lightDir);
-                if (a <= 0)
-				{
-					continue;
-				}
+               
 
 				a = System.Math.Max(a, 0.1);
 				int color = (int)(255 * a);
