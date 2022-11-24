@@ -59,11 +59,11 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(200, 10, 1);	
+		private Vec3 cameraPos = new Vec3(200, 0, 0);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light = new Vec3(100, 0, 0);
+		private Vec3 light = new Vec3(20, 20, 10);
 
 		private bool isChanged = false;
 		private double horizontalAngle = -System.Math.PI / 2;
@@ -78,6 +78,22 @@ namespace AKG
 			model = Parser.ParserObj("D:\\1.obj");
 			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
+			for (int i = 0; i < model.Count; i++)
+			{
+				if (model[i].Vertices.Count != 3)
+				{
+                    int vC = 2;
+                    while (vC < model[i].Vertices.Count - 1)
+					{
+						var vertecies = new List<Vertex>();
+						vertecies.Add(model[i].Vertices[vC]);
+                        vertecies.Add(model[i].Vertices[vC + 1]);
+                        vertecies.Add(model[i].Vertices[(vC + 2) % model[i].Vertices.Count]);
+						model.Add(new Polygon(vertecies));
+						vC++;
+                    }
+				}
+			}
 
 			target = new Vec3(
 				System.Math.Cos(verticalAngle) * System.Math.Sin(horizontalAngle),
