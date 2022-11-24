@@ -52,18 +52,18 @@ namespace AKG
 		private double[,] zBuffer = new double[1080, 1920];
 
 		private List<Polygon> model;
-		private ParallelQuery<Vec4> positions;
+		private List<Vec4> positions;
 		private List<Vec4> multipliedPostions;
 		private List<Vec3> normals;
 		private Mat4 view;
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos;	
+		private Vec3 cameraPos = new Vec3(200, 10, 1);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light = new Vec3(10, 5, 5);
+		private Vec3 light = new Vec3(100, 0, 0);
 
 		private bool isChanged = false;
 		private double horizontalAngle = -System.Math.PI / 2;
@@ -75,11 +75,10 @@ namespace AKG
 		{
 			InitializeComponent();
 
-			model = Parser.ParserObj("D:\\Cube.obj");
-			positions = Parser.VertexPositions.AsParallel();
+			model = Parser.ParserObj("D:\\1.obj");
+			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
 
-			cameraPos = new Vec3(100, 1, 1);
 			target = new Vec3(
 				System.Math.Cos(verticalAngle) * System.Math.Sin(horizontalAngle),
 				System.Math.Sin(verticalAngle),
@@ -176,25 +175,40 @@ namespace AKG
 			var lines = new HashSet<(int first, int second)>(new LinesEqualityComparer());
 			for (int i = 0; i < model.Count; i++)
 			{
-				//Vec4 first = multipliedPostions[model[i].Vertices[0].Position];
-				//for (int j = 1; j < model[i].Vertices.Count; j++)
-				//{
-				//	Vec4 second = multipliedPostions[model[i].Vertices[j].Position];
-				//	if (!lines.Contains((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position)))
-				//	{
-				//		DrawLine(first, second, bmp);
-				//		lines.Add((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position));
-				//	}
+                Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] +
+                    normals[model[i].Vertices[2].Normal]) / 3;
+				
+				if (Vec3.MultiplyScalar(normal, (Vec3)cameraPos + target) < 0)
+				{
+					continue;
+				}
 
-				//	first = second;
-				//}
+                Vec4 pos = (positions[model[i].Vertices[0].Position] + positions[model[i].Vertices[1].Position] +
+                    positions[model[i].Vertices[2].Position]) / 3;
+                Vec3 lightDir = Vec3.Normalize(light - (Vec3)pos);
+                double a = Vec3.MultiplyScalar(normal, lightDir);
+                if (a <= 0)
+				{
+					continue;
+				}
 
-				Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] + normals[model[i].Vertices[2].Normal]) / 3;
-				double a = Vec3.MultiplyScalar(normal, light);
-				double b = normal.Legth * (light).Legth;
-                double c = a / b;
-				int color = (int)(255 * c);
-                foreach (var line in GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position))
+				a = System.Math.Max(a, 0.1);
+				int color = (int)(255 * a);
+
+				Vec4 first = multipliedPostions[model[i].Vertices[0].Position];
+				for (int j = 1; j < model[i].Vertices.Count; j++)
+				{
+					Vec4 second = multipliedPostions[model[i].Vertices[j].Position];
+					if (!lines.Contains((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position)))
+					{
+						DrawLine(first, second, bmp, color > 0 ? (byte)color : (byte)0);
+						lines.Add((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position));
+					}
+
+					first = second;
+				}
+
+				foreach (var line in GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position))
 				{
 					DrawLine(line.Item1, line.Item2, bmp, color > 0 ? (byte)color : (byte)0);
 				}
@@ -234,7 +248,7 @@ namespace AKG
 
 		private void MultiplyPositions()
 		{
-			multipliedPostions = positions
+            multipliedPostions = positions
 				.Select(p =>
 				{
 					p = p * view * projection;
