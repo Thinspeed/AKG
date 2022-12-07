@@ -59,7 +59,7 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 0, -50);	
+		private Vec3 cameraPos = new Vec3(0, 3, -7);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
@@ -75,7 +75,7 @@ namespace AKG
 		{
 			InitializeComponent();
 
-			model = Parser.ParserObj("D:\\1.obj");
+			model = Parser.ParserObj("D:\\Cup.obj");
 			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
 			for (int i = 0; i < model.Count; i++)
@@ -193,11 +193,6 @@ namespace AKG
 			{
                 Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] +
                     normals[model[i].Vertices[2].Normal]) / 3;
-				
-				//if (Vec3.MultiplyScalar(normal, (Vec3)cameraPos + target) < 0)
-				//{
-				//	continue;
-				//}
 
                 Vec4 pos = (positions[model[i].Vertices[0].Position] + positions[model[i].Vertices[1].Position] +
                     positions[model[i].Vertices[2].Position]) / 3;
