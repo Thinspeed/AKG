@@ -35,6 +35,36 @@ namespace AKG
 		}
 	}
 
+	public struct BColor
+	{
+		public BColor(byte red, byte green, byte blue)
+		{
+			this.Red = red;
+			this.Green = green;
+			this.Blue = blue;
+		}
+
+		public byte Red { get; set; }
+
+		public byte Green { get; set; }
+
+		public byte Blue { get; set; }
+
+		public static BColor operator *(BColor color, double k)
+		{
+			return new BColor((byte)(color.Red * k), (byte)(color.Green * k), (byte)(color.Blue * k));
+		}
+
+        public static BColor operator +(BColor lvalue, BColor rvalue)
+        {
+            int r = lvalue.Red + rvalue.Red;
+            int g = lvalue.Green + rvalue.Green;
+            int b = lvalue.Blue + rvalue.Blue;
+
+			return new BColor(r < 256 ? (byte)r : (byte)255, g < 256 ? (byte)g : (byte)255, b < 256 ? (byte)b : (byte)255);
+        }
+    }
+
 	/// <summary>
 	/// Interaction logic for MainWindow.xaml
 	/// </summary>
@@ -59,13 +89,18 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 0, -50);	
+		private Vec3 cameraPos = new Vec3(0, 0, -7);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light = new Vec3(20, 20, -20);
+		private Vec3 light => new Vec3(20, 20, -20);
 
-		private bool isChanged = false;
+        private const double ambientLightK = 0.1;
+        private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
+		private BColor diffuseLightColor = new BColor(255, 0, 0);
+		private BColor specularColor = new BColor(255, 255, 255);
+
+        private bool isChanged = false;
 		private double horizontalAngle = 0;
 		private double verticalAngle = 0;
 		private double mouseSpeed = 0.0001;
@@ -75,7 +110,8 @@ namespace AKG
 		{
 			InitializeComponent();
 
-			model = Parser.ParserObj("D:\\1.obj");
+			var a = new BColor(255, 255, 255) + new BColor(255, 4, 19);
+			model = Parser.ParserObj("D:\\Cup.obj");
 			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
 			for (int i = 0; i < model.Count; i++)
@@ -142,38 +178,88 @@ namespace AKG
 			inputTimer.Start();
 		}
 
-		private List<(Vec4, Vec4)> GetLines(int index1, int index2, int index3)
+		private (List<(Vec4, Vec4)> pos, List<(Vec4, Vec4)> ver, List<(Vec3, Vec3)> norm) GetLines(int index1, int index2, int index3, int indexN1, int indexN2, int indexN3)
 		{
-			var list = new List<(Vec4, Vec4)>();
+			var p = new List<(Vec4, Vec4)>();
+			var v = new List<(Vec4, Vec4)>();
+			var n = new List<(Vec3, Vec3)>();
+
 			var point1 = multipliedPostions[index1];
 			var point2 = multipliedPostions[index2];
 			var point3 = multipliedPostions[index3];
+
+			var vertex1 = positions[index1];
+			var vertex2 = positions[index2];
+			var vertex3 = positions[index3];
+
+			var normal1 = normals[indexN1];
+			var normal2 = normals[indexN2];
+			var normal3 = normals[indexN3];
+
 			double deltaX1 = point3.X - point1.X;
 			double deltaX2 = point3.X - point2.X;
 			double deltaY1 = point3.Y - point1.Y;
 			double deltaY2 = point3.Y - point2.Y;
 			double deltaZ1 = point3.Z - point1.Z;
 			double deltaZ2 = point3.Z - point2.Z;
-			int l1 = System.Math.Abs(deltaX1) > System.Math.Abs(deltaY1) ? (int)System.Math.Abs(deltaX1) : (int)System.Math.Abs(deltaY1);
+
+            double deltaVX1 = vertex3.X - vertex1.X;
+            double deltaVX2 = vertex3.X - vertex2.X;
+            double deltaVY1 = vertex3.Y - vertex1.Y;
+            double deltaVY2 = vertex3.Y - vertex2.Y;
+            double deltaVZ1 = vertex3.Z - vertex1.Z;
+            double deltaVZ2 = vertex3.Z - vertex2.Z;
+
+            double deltaNX1 = normal3.X - normal1.X;
+			double deltaNX2 = normal3.X - normal2.X;
+			double deltaNY1 = normal3.Y - normal1.Y;
+            double deltaNY2 = normal3.Y - normal2.Y;
+            double deltaNZ1 = normal3.Z - normal1.Z;
+            double deltaNZ2 = normal3.Z - normal2.Z;
+
+            int l1 = System.Math.Abs(deltaX1) > System.Math.Abs(deltaY1) ? (int)System.Math.Abs(deltaX1) : (int)System.Math.Abs(deltaY1);
 			int l2 = System.Math.Abs(deltaX2) > System.Math.Abs(deltaY2) ? (int)System.Math.Abs(deltaX2) : (int)System.Math.Abs(deltaY2);
 			int l = System.Math.Max(l1, l2);
 
 			double x1 = point1.X, x2 = point2.X,
 				y1 = point1.Y, y2 = point2.Y,
-				z1 = point1.Z, z2 = point2.Z;
+				z1 = point1.Z, z2 = point2.Z,
+				nx1 = normal1.X, nx2 = normal2.X,
+				ny1 = normal1.Y, ny2 = normal2.Y,
+				nz1 = normal1.Z, nz2 = normal2.Z,
+                vx1 = vertex1.X, vx2 = vertex2.X,
+                vy1 = vertex1.Y, vy2 = vertex2.Y,
+                vz1 = vertex1.Z, vz2 = vertex2.Z;
 
 			for (int i = 0; i < l; i++)
 			{
-				list.Add((new Vec4(x1, y1, z1, 1), new Vec4(x2, y2, z2, 1)));
+				p.Add((new Vec4(x1, y1, z1, 1), new Vec4(x2, y2, z2, 1)));
+				v.Add((new Vec4(vx1, vy1, vz1, 1), new Vec4(vx2, vy2, vz2, 1)));
+				n.Add((new Vec3(nx1, ny1, nz1), new Vec3(nx2, ny2, nz2)));
+
 				x1 += deltaX1 / l;
 				x2 += deltaX2 / l;
 				y1 += deltaY1 / l;
 				y2 += deltaY2 / l;
 				z1 += deltaZ1 / l;
 				z2 += deltaZ2 / l;
-			}
 
-			return list;
+				nx1 += deltaNX1 / l;
+				nx2 += deltaNX2 / l;
+                ny1 += deltaNY1 / l;
+                ny2 += deltaNY2 / l;
+                nz1 += deltaNZ1 / l;
+                nz2 += deltaNZ2 / l;
+
+                vx1 += deltaVX1 / l;
+                vx2 += deltaVX2 / l;
+                vy1 += deltaVY1 / l;
+                vy2 += deltaVY2 / l;
+                vz1 += deltaVZ1 / l;
+                vz2 += deltaVZ2 / l;
+            }
+
+			return (p, v, n);
 		}
 
 		unsafe private void DrawModel()
@@ -194,37 +280,22 @@ namespace AKG
                 Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] +
                     normals[model[i].Vertices[2].Normal]) / 3;
 				
-				//if (Vec3.MultiplyScalar(normal, (Vec3)cameraPos + target) < 0)
-				//{
-				//	continue;
-				//}
-
                 Vec4 pos = (positions[model[i].Vertices[0].Position] + positions[model[i].Vertices[1].Position] +
                     positions[model[i].Vertices[2].Position]) / 3;
                 Vec3 lightDir = Vec3.Normalize(light - (Vec3)pos);
-                double a = Vec3.MultiplyScalar(normal, lightDir);
-               
-
-				a = System.Math.Max(a, 0.1);
-				int color = (int)(255 * a);
-
-				Vec4 first = multipliedPostions[model[i].Vertices[0].Position];
-				for (int j = 1; j < model[i].Vertices.Count; j++)
+				if (Vec3.MultiplyScalar(Vec3.Normalize(normal), lightDir) >= 0)
 				{
-					Vec4 second = multipliedPostions[model[i].Vertices[j].Position];
-					if (!lines.Contains((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position)))
-					{
-						DrawLine(first, second, bmp, color > 0 ? (byte)color : (byte)0);
-						lines.Add((model[i].Vertices[j - 1].Position, model[i].Vertices[j].Position));
-					}
+                    List<(Vec4, Vec4)> p;
+                    List<(Vec4, Vec4)> v;
+                    List<(Vec3, Vec3)> n;
+                    (p, v, n) = GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position,
+                        model[i].Vertices[0].Normal, model[i].Vertices[1].Normal, model[i].Vertices[2].Normal);
 
-					first = second;
-				}
-
-				foreach (var line in GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position))
-				{
-					DrawLine(line.Item1, line.Item2, bmp, color > 0 ? (byte)color : (byte)0);
-				}
+                    for (int j = 0; j < p.Count; j++)
+                    {
+                        DrawLine(p[j].Item1, p[j].Item2, v[j].Item1, v[j].Item2, n[j].Item1, n[j].Item2, bmp);
+                    }
+                }
 			}
 
 			bmp.AddDirtyRect(new Int32Rect(0, 0, 1920, 1080));
@@ -232,23 +303,41 @@ namespace AKG
 			Image.Source = bmp;
 		}
 
-		unsafe private void DrawLine(Vec4 point1, Vec4 point2, WriteableBitmap bmp, byte color)
+		unsafe private void DrawLine(Vec4 point1, Vec4 point2, Vec4 vertex1, Vec4 vertex2, Vec3 normal1, Vec3 normal2, WriteableBitmap bmp)
 		{
 			double deltaX = point2.X - point1.X;
 			double deltaY = point2.Y - point1.Y;
 			double deltaZ = point2.Z - point1.Z;
-			int l = System.Math.Abs(deltaX) > System.Math.Abs(deltaY) ? (int)System.Math.Abs(deltaX) : (int)System.Math.Abs(deltaY);
-			double x = point1.X;
-			double y = point1.Y;
-			double z = point1.Z;
-			for (int i = 0; i < l; i++)
+
+            double deltaVX = vertex2.X - vertex1.X;
+            double deltaVY = vertex2.Y - vertex1.Y;
+            double deltaVZ = vertex2.Z - vertex1.Z;
+
+            double deltaNX = normal2.X - normal1.X;
+            double deltaNY = normal2.Y - normal1.Y;
+            double deltaNZ = normal2.Z - normal1.Z;
+
+            int l = System.Math.Abs(deltaX) > System.Math.Abs(deltaY) ? (int)System.Math.Abs(deltaX) : (int)System.Math.Abs(deltaY);
+			double x = point1.X, y = point1.Y, z = point1.Z;
+			Vec4 v = vertex1;
+			Vec3 n = normal1;
+
+            for (int i = 0; i < l; i++)
 			{
-				if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
+                Vec3 lightDir = Vec3.Normalize(light - (Vec3)v);
+                double a = Vec3.MultiplyScalar(n, lightDir);
+                a = System.Math.Max(a, 0.1);
+                
+				Vec3 r = 2 * (n * lightDir) * n - lightDir;
+				BColor iS = specularColor * Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos - (Vec3)v)) * 0.02;
+                BColor color = ambientLightColor + (diffuseLightColor * a) + iS;
+
+                if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
 				{
 					if (zBuffer[(int)y, (int)x] == -1 || zBuffer[(int)y, (int)x] > z)
 					{
 						byte* p = (byte*)bmp.BackBuffer + ((int)y * bmp.BackBufferStride) + ((int)x * 3);
-						p[2] = color;
+						p[2] = color.Red; p[1] = color.Green; p[0] = color.Blue;
 						zBuffer[(int)y, (int)x] = z;
 					}
 				}
@@ -256,6 +345,14 @@ namespace AKG
 				x += deltaX / l;
 				y += deltaY / l;
 				z += deltaZ / l;
+
+                v.X += deltaVX / l;
+                v.Y += deltaVY / l;
+                v.Z += deltaVZ / l;
+
+                n.X += deltaNX / l;
+				n.Y += deltaNY / l;
+				n.Z += deltaNZ / l;
 			}
 		}
 

@@ -66,6 +66,11 @@
 			return new Vec3(vec.X * value, vec.Y * value, vec.Z * value);
 		}
 
+        public static Vec3 operator *(double value, Vec3 vec)
+        {
+            return new Vec3(vec.X * value, vec.Y * value, vec.Z * value);
+        }
+
         public static Vec3 operator /(Vec3 vec, double devider)
 		{
 			return new Vec3(vec.X / devider, vec.Y / devider, vec.Z / devider);
