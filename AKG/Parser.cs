@@ -56,7 +56,7 @@ namespace AKG
                         (int pos, int tex, int norm) indecies = ParseVertex(parts[i]);
                         vertecies.Add(new Vertex(
                             indecies.pos - 1,
-                            indecies.tex == 0 ? new Vec3() : VertexTexture[indecies.tex - 1],
+                            indecies.tex - 1,
                             indecies.norm - 1));
                     }
 
