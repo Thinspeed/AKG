@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -15,6 +16,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.TextFormatting;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -35,36 +37,6 @@ namespace AKG
 		}
 	}
 
-	public struct BColor
-	{
-		public BColor(byte red, byte green, byte blue)
-		{
-			this.Red = red;
-			this.Green = green;
-			this.Blue = blue;
-		}
-
-		public byte Red { get; set; }
-
-		public byte Green { get; set; }
-
-		public byte Blue { get; set; }
-
-		public static BColor operator *(BColor color, double k)
-		{
-			return new BColor((byte)(color.Red * k), (byte)(color.Green * k), (byte)(color.Blue * k));
-		}
-
-        public static BColor operator +(BColor lvalue, BColor rvalue)
-        {
-            int r = lvalue.Red + rvalue.Red;
-            int g = lvalue.Green + rvalue.Green;
-            int b = lvalue.Blue + rvalue.Blue;
-
-			return new BColor(r < 256 ? (byte)r : (byte)255, g < 256 ? (byte)g : (byte)255, b < 256 ? (byte)b : (byte)255);
-        }
-    }
-
 	/// <summary>
 	/// Interaction logic for MainWindow.xaml
 	/// </summary>
@@ -81,24 +53,25 @@ namespace AKG
 		private bool initial = true;
 		private double[,] zBuffer = new double[1080, 1920];
 
-		private List<Polygon> model;
+		private Model model;
 		private List<Vec4> positions;
 		private List<Vec4> multipliedPostions;
 		private List<Vec3> normals;
+		private List<Vec3> textures;
 		private Mat4 view;
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 0, -7);	
+		private Vec3 cameraPos = new Vec3(1, 0, -6);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
 		private Vec3 light => new Vec3(20, 20, -20);
 
         private const double ambientLightK = 0.1;
-        private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
-		private BColor diffuseLightColor = new BColor(255, 0, 0);
-		private BColor specularColor = new BColor(255, 255, 255);
+        private Color ambientLightColor = new Color() { R = (byte)(255 * ambientLightK), G = (byte)(255 * ambientLightK), B = (byte)(255 * ambientLightK) };
+		private Color diffuseLightColor = new Color() { R = 255, G = 0, B = 0, };
+		private Color specularColor = new Color() { R = 50, G = 50, B = 50 };
 
         private bool isChanged = false;
 		private double horizontalAngle = 0;
@@ -110,22 +83,27 @@ namespace AKG
 		{
 			InitializeComponent();
 
-			var a = new BColor(255, 255, 255) + new BColor(255, 4, 19);
-			model = Parser.ParserObj("D:\\Cup.obj");
+			model = new Model()
+			{
+				Polygons = Parser.ParserObj("D:\\Cup\\Cup.obj"),
+				Diffuse = new System.Drawing.Bitmap("D:\\Cup\\textures\\Cup_albedo.jpeg")
+			};
+
 			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
-			for (int i = 0; i < model.Count; i++)
+			textures = Parser.VertexTexture;
+			for (int i = 0; i < model.Polygons.Count; i++)
 			{
-				if (model[i].Vertices.Count != 3)
+				if (model.Polygons[i].Vertices.Count != 3)
 				{
                     int vC = 2;
-                    while (vC < model[i].Vertices.Count - 1)
+                    while (vC < model.Polygons[i].Vertices.Count - 1)
 					{
 						var vertecies = new List<Vertex>();
-						vertecies.Add(model[i].Vertices[vC]);
-                        vertecies.Add(model[i].Vertices[vC + 1]);
-                        vertecies.Add(model[i].Vertices[(vC + 2) % model[i].Vertices.Count]);
-						model.Add(new Polygon(vertecies));
+						vertecies.Add(model.Polygons[i].Vertices[vC]);
+                        vertecies.Add(model.Polygons[i].Vertices[vC + 1]);
+                        vertecies.Add(model.Polygons[i].Vertices[(vC + 2) % model.Polygons[i].Vertices.Count]);
+						model.Polygons.Add(new Polygon(vertecies));
 						vC++;
                     }
 				}
@@ -178,11 +156,15 @@ namespace AKG
 			inputTimer.Start();
 		}
 
-		private (List<(Vec4, Vec4)> pos, List<(Vec4, Vec4)> ver, List<(Vec3, Vec3)> norm) GetLines(int index1, int index2, int index3, int indexN1, int indexN2, int indexN3)
+		private (List<(Vec4, Vec4)> pos, List<(Vec4, Vec4)> ver, List<(Vec3, Vec3)> norm, List<(Vec3, Vec3)> uv) GetLines(
+			int index1, int index2, int index3,
+			int indexN1, int indexN2, int indexN3,
+			int indexT1, int indexT2, int indexT3)
 		{
 			var p = new List<(Vec4, Vec4)>();
 			var v = new List<(Vec4, Vec4)>();
 			var n = new List<(Vec3, Vec3)>();
+			var uv = new List<(Vec3, Vec3)>();
 
 			var point1 = multipliedPostions[index1];
 			var point2 = multipliedPostions[index2];
@@ -196,7 +178,11 @@ namespace AKG
 			var normal2 = normals[indexN2];
 			var normal3 = normals[indexN3];
 
-			double deltaX1 = point3.X - point1.X;
+			var texture1 = textures[indexT1];
+            var texture2 = textures[indexT2];
+            var texture3 = textures[indexT3];
+
+            double deltaX1 = point3.X - point1.X;
 			double deltaX2 = point3.X - point2.X;
 			double deltaY1 = point3.Y - point1.Y;
 			double deltaY2 = point3.Y - point2.Y;
@@ -217,6 +203,11 @@ namespace AKG
             double deltaNZ1 = normal3.Z - normal1.Z;
             double deltaNZ2 = normal3.Z - normal2.Z;
 
+            double deltaTX1 = texture3.X - texture1.X;
+            double deltaTX2 = texture3.X - texture2.X;
+            double deltaTY1 = texture3.Y - texture1.Y;
+            double deltaTY2 = texture3.Y - texture2.Y;
+
             int l1 = System.Math.Abs(deltaX1) > System.Math.Abs(deltaY1) ? (int)System.Math.Abs(deltaX1) : (int)System.Math.Abs(deltaY1);
 			int l2 = System.Math.Abs(deltaX2) > System.Math.Abs(deltaY2) ? (int)System.Math.Abs(deltaX2) : (int)System.Math.Abs(deltaY2);
 			int l = System.Math.Max(l1, l2);
@@ -227,15 +218,19 @@ namespace AKG
 				nx1 = normal1.X, nx2 = normal2.X,
 				ny1 = normal1.Y, ny2 = normal2.Y,
 				nz1 = normal1.Z, nz2 = normal2.Z,
-                vx1 = vertex1.X, vx2 = vertex2.X,
-                vy1 = vertex1.Y, vy2 = vertex2.Y,
-                vz1 = vertex1.Z, vz2 = vertex2.Z;
+				vx1 = vertex1.X, vx2 = vertex2.X,
+				vy1 = vertex1.Y, vy2 = vertex2.Y,
+				vz1 = vertex1.Z, vz2 = vertex2.Z,
+				tx1 = texture1.X, tx2 = texture2.X,
+				ty1 = texture1.Y, ty2 = texture2.Y;
 
-			for (int i = 0; i < l; i++)
+
+            for (int i = 0; i < l; i++)
 			{
 				p.Add((new Vec4(x1, y1, z1, 1), new Vec4(x2, y2, z2, 1)));
 				v.Add((new Vec4(vx1, vy1, vz1, 1), new Vec4(vx2, vy2, vz2, 1)));
 				n.Add((new Vec3(nx1, ny1, nz1), new Vec3(nx2, ny2, nz2)));
+				uv.Add((new Vec3(tx1, ty1, 0), new Vec3(tx2, ty2, 0)));
 
 				x1 += deltaX1 / l;
 				x2 += deltaX2 / l;
@@ -257,13 +252,23 @@ namespace AKG
                 vy2 += deltaVY2 / l;
                 vz1 += deltaVZ1 / l;
                 vz2 += deltaVZ2 / l;
+
+				tx1 += deltaTX1 / l;
+				tx2 += deltaTX2 / l;
+				ty1 += deltaTY1 / l;
+				ty2 += deltaTY2 / l;
             }
 
-			return (p, v, n);
+			return (p, v, n, uv);
 		}
 
 		unsafe private void DrawModel()
 		{
+			if (model is null || model.Polygons is null)
+			{
+				return;
+			}
+
 			WriteableBitmap bmp = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);
 			for (int y = 0; y < 1080; y++)
 			{
@@ -275,25 +280,26 @@ namespace AKG
 
 			bmp.Lock();
 			var lines = new HashSet<(int first, int second)>(new LinesEqualityComparer());
-			for (int i = 0; i < model.Count; i++)
+			for (int i = 0; i < model.Polygons.Count; i++)
 			{
-                Vec3 normal = (normals[model[i].Vertices[0].Normal] + normals[model[i].Vertices[1].Normal] +
-                    normals[model[i].Vertices[2].Normal]) / 3;
-				
-                Vec4 pos = (positions[model[i].Vertices[0].Position] + positions[model[i].Vertices[1].Position] +
-                    positions[model[i].Vertices[2].Position]) / 3;
-                Vec3 lightDir = Vec3.Normalize(light - (Vec3)pos);
-				if (Vec3.MultiplyScalar(Vec3.Normalize(normal), lightDir) >= 0)
+                Vec3 normal = (normals[model.Polygons[i].Vertices[0].Normal] + normals[model.Polygons[i].Vertices[1].Normal] +
+                    normals[model.Polygons[i].Vertices[2].Normal]) / 3;
+                Vec4 pos = (positions[model.Polygons[i].Vertices[0].Position] + positions[model.Polygons[i].Vertices[1].Position] +
+                    positions[model.Polygons[i].Vertices[2].Position]) / 3;
+
+				if (Vec3.MultiplyScalar(Vec3.Normalize(normal), Vec3.Normalize(cameraPos - (Vec3)pos)) > 0)
 				{
                     List<(Vec4, Vec4)> p;
                     List<(Vec4, Vec4)> v;
                     List<(Vec3, Vec3)> n;
-                    (p, v, n) = GetLines(model[i].Vertices[0].Position, model[i].Vertices[1].Position, model[i].Vertices[2].Position,
-                        model[i].Vertices[0].Normal, model[i].Vertices[1].Normal, model[i].Vertices[2].Normal);
+					List<(Vec3, Vec3)> uv;
+                    (p, v, n, uv) = GetLines(model.Polygons[i].Vertices[0].Position, model.Polygons[i].Vertices[1].Position, model.Polygons[i].Vertices[2].Position,
+                        model.Polygons[i].Vertices[0].Normal, model.Polygons[i].Vertices[1].Normal, model.Polygons[i].Vertices[2].Normal,
+                        model.Polygons[i].Vertices[0].Texture, model.Polygons[i].Vertices[1].Texture, model.Polygons[i].Vertices[2].Texture);
 
                     for (int j = 0; j < p.Count; j++)
                     {
-                        DrawLine(p[j].Item1, p[j].Item2, v[j].Item1, v[j].Item2, n[j].Item1, n[j].Item2, bmp);
+                        DrawLine(bmp, p[j].Item1, p[j].Item2, v[j].Item1, v[j].Item2, n[j].Item1, n[j].Item2, uv[j].Item1, uv[j].Item2);
                     }
                 }
 			}
@@ -303,7 +309,11 @@ namespace AKG
 			Image.Source = bmp;
 		}
 
-		unsafe private void DrawLine(Vec4 point1, Vec4 point2, Vec4 vertex1, Vec4 vertex2, Vec3 normal1, Vec3 normal2, WriteableBitmap bmp)
+		unsafe private void DrawLine(WriteableBitmap bmp,
+			Vec4 point1, Vec4 point2,
+			Vec4 vertex1, Vec4 vertex2,
+			Vec3 normal1, Vec3 normal2,
+			Vec3 texture1, Vec3 texture2)
 		{
 			double deltaX = point2.X - point1.X;
 			double deltaY = point2.Y - point1.Y;
@@ -317,27 +327,32 @@ namespace AKG
             double deltaNY = normal2.Y - normal1.Y;
             double deltaNZ = normal2.Z - normal1.Z;
 
+			double deltaTX = texture2.X - texture1.X;
+			double deltaTY = texture2.Y - texture1.Y;
+
             int l = System.Math.Abs(deltaX) > System.Math.Abs(deltaY) ? (int)System.Math.Abs(deltaX) : (int)System.Math.Abs(deltaY);
 			double x = point1.X, y = point1.Y, z = point1.Z;
 			Vec4 v = vertex1;
 			Vec3 n = normal1;
+			Vec3 uv = texture1;
 
             for (int i = 0; i < l; i++)
 			{
                 Vec3 lightDir = Vec3.Normalize(light - (Vec3)v);
                 double a = Vec3.MultiplyScalar(n, lightDir);
                 a = System.Math.Max(a, 0.1);
-                
+                //доделать блески
 				Vec3 r = 2 * (n * lightDir) * n - lightDir;
-				BColor iS = specularColor * Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos - (Vec3)v)) * 0.02;
-                BColor color = ambientLightColor + (diffuseLightColor * a) + iS;
+				Color iS = BColor.MultiplyColor(specularColor, Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos - (Vec3)v)) * 0.05);
+                Color color = ambientLightColor + (BColor.MultiplyColor(diffuseLightColor, a)) + iS;
 
+				//color = model.GetPixelColor(uv.X, uv.Y);
                 if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
 				{
 					if (zBuffer[(int)y, (int)x] == -1 || zBuffer[(int)y, (int)x] > z)
 					{
 						byte* p = (byte*)bmp.BackBuffer + ((int)y * bmp.BackBufferStride) + ((int)x * 3);
-						p[2] = color.Red; p[1] = color.Green; p[0] = color.Blue;
+						p[2] = color.R; p[1] = color.G; p[0] = color.B;
 						zBuffer[(int)y, (int)x] = z;
 					}
 				}
@@ -353,6 +368,9 @@ namespace AKG
                 n.X += deltaNX / l;
 				n.Y += deltaNY / l;
 				n.Z += deltaNZ / l;
+
+				uv.X += deltaTX / l;
+				uv.Y += deltaTY / l;
 			}
 		}
 
