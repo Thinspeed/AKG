@@ -63,18 +63,18 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 3, 10);	
+		private Vec3 cameraPos = new Vec3(0, 50, 100);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light => new Vec3(0, 5, 10);
+		private Vec3 light => new Vec3(0, 100, 100);
 
         private const double ambientLightK = 0.1;
         private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
 		private BColor specularColor = new BColor(255, 255, 255);
 
         private bool isChanged = false;
-		private double horizontalAngle = 0;
+		private double horizontalAngle = System.Math.PI;
 		private double verticalAngle = 0;
 		private double mouseSpeed = 0.0001;
 		private double speed = 1;
@@ -83,11 +83,13 @@ namespace AKG
 		{
 			InitializeComponent();
 
-			model = new Model()
+            //D:\\Models\\Intergalactic Spaceship\\
+            model = new Model()
 			{
-				Polygons = Parser.ParserObj("D:\\Models\\Intergalactic Spaceship\\Model.obj"),
-				Diffuse = new System.Drawing.Bitmap("D:\\Models\\Intergalactic Spaceship\\BaseColor Map.jpg")
-			};
+				Polygons = Parser.ParserObj("D:\\Models\\Pink Soldier\\Model.obj"),
+				Diffuse = new System.Drawing.Bitmap("D:\\Models\\Pink Soldier\\BaseColor Map.png"),
+				NormalMap = new System.Drawing.Bitmap("D:\\Models\\Pink Soldier\\Normal Map.png"),
+            };
 
 			positions = Parser.VertexPositions;
 			normals = Parser.VertexNormals;
@@ -320,6 +322,7 @@ namespace AKG
 
             for (int i = 0; i < l; i++)
 			{
+				n = model.GetNormal(t.X, t.Y);
                 Vec3 lightDir = light - (Vec3)v;
                 double a = Vec3.MultiplyScalar(n, Vec3.Normalize(lightDir));
                 a = System.Math.Max(a, 0);
