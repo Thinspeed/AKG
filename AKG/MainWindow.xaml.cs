@@ -63,14 +63,14 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 0, -5);	
+		private Vec3 cameraPos = new Vec3(0, 3, 10);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light => new Vec3(0, 0, -3);
+		private Vec3 light => new Vec3(0, 5, 10);
 
         private const double ambientLightK = 0.1;
-        private BColor ambientLightColor = new BColor(255, 0, 0) * ambientLightK;
+        private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
 		private BColor specularColor = new BColor(255, 255, 255);
 
         private bool isChanged = false;
@@ -85,8 +85,8 @@ namespace AKG
 
 			model = new Model()
 			{
-				Polygons = Parser.ParserObj("D:\\Cup\\Cup.obj"),
-				Diffuse = new System.Drawing.Bitmap("D:\\Cup\\textures\\Cup_albedo.jpeg")
+				Polygons = Parser.ParserObj("D:\\Models\\Intergalactic Spaceship\\Model.obj"),
+				Diffuse = new System.Drawing.Bitmap("D:\\Models\\Intergalactic Spaceship\\BaseColor Map.jpg")
 			};
 
 			positions = Parser.VertexPositions;
