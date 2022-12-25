@@ -12,6 +12,48 @@ namespace AKG
 		public BColor()
 			: this(0, 0, 0) { }
 
+		public BColor(int red, int green, int blue)
+		{
+			if (red < 0)
+			{
+				this.Red = 0;
+			}
+			else if (red > 255)
+			{
+				this.Red = 255;
+			}
+			else
+			{
+				this.Red = (byte)red;
+			}
+
+            if (green < 0)
+            {
+                this.Green = 0;
+            }
+            else if (green > 255)
+            {
+                this.Green = 255;
+            }
+            else
+            {
+                this.Green = (byte)green;
+            }
+
+            if (blue < 0)
+            {
+                this.Blue = 0;
+            }
+            else if (blue > 255)
+            {
+                this.Blue = 255;
+            }
+            else
+            {
+                this.Blue = (byte)blue;
+            }
+        }
+
 		public BColor(byte red, byte green, byte blue)
 		{
 			this.Red = red;
@@ -37,15 +79,6 @@ namespace AKG
 			int b = lvalue.Blue + rvalue.Blue;
 
 			return new BColor(r < 256 ? (byte)r : (byte)255, g < 256 ? (byte)g : (byte)255, b < 256 ? (byte)b : (byte)255);
-		}
-
-		public static Color MultiplyColor(Color c, double k)
-		{
-			c.R = (byte)(c.R * k);
-			c.G = (byte)(c.G * k);
-			c.B = (byte)(c.B * k);
-
-			return c;
 		}
 	}
 }

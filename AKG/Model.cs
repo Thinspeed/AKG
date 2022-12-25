@@ -13,23 +13,18 @@ namespace AKG
 
         public Bitmap? Diffuse { get; set; }
 
-        public System.Windows.Media.Color GetPixelColor(double u, double v)
+        public BColor GetPixelColor(double u, double v)
         {
             if (Diffuse == null)
             {
-                return new System.Windows.Media.Color();
+                return new BColor();
             }
 
             int x = (int)(Diffuse.Width * u);
             int y = (int)(Diffuse.Height * (1 - v));
             Color temp = Diffuse.GetPixel(x, y);
 
-            return new System.Windows.Media.Color()
-            {
-                R = temp.R,
-                G = temp.G,
-                B = temp.B
-            };
+            return new BColor(temp.R, temp.G, temp.B);
         }
     }
 }
