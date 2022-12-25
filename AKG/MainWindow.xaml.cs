@@ -57,19 +57,20 @@ namespace AKG
 		private List<Vec4> positions;
 		private List<Vec4> multipliedPostions;
 		private List<Vec3> normals;
+		private List<Vec3> multipliedNormals;
 		private List<Vec3> textures;
 		private Mat4 view;
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(1, 0, -6);	
+		private Vec3 cameraPos = new Vec3(-3, 0, -5);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light => new Vec3(20, 20, -20);
+		private Vec3 light => new Vec3(0, 0, -3);
 
         private const double ambientLightK = 0.1;
-        private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
+        private BColor ambientLightColor = new BColor(255, 0, 0) * ambientLightK;
 		private BColor diffuseLightColor = new BColor(255, 0, 0);
 		private BColor specularColor = new BColor(255, 255, 255);
 
@@ -130,16 +131,8 @@ namespace AKG
 			inputTimer.Interval = TimeSpan.FromMilliseconds(1000 / 60);
 			inputTimer.Tick += (object? sender, EventArgs e) =>
 			{
-				var watch = new Stopwatch();
-				watch.Start();
 				ProcessMouseInput();
-				watch.Stop();
-				double a = watch.Elapsed.TotalMilliseconds;
-				watch.Restart();
 				ProcessKeyboardInput();
-				watch.Stop();
-				double b = watch.Elapsed.TotalMilliseconds;
-				watch.Restart();
 				if (isChanged)
 				{
 					view = Mat4.CreateView(cameraPos, cameraPos + target, up);
@@ -148,9 +141,6 @@ namespace AKG
 				}
 
 				DrawModel();
-				watch.Stop();
-				double c = watch.Elapsed.TotalMilliseconds;
-				Console.WriteLine($"{a} {b} {c}");
 			};
 
 			inputTimer.Start();
@@ -312,12 +302,13 @@ namespace AKG
 
             for (int i = 0; i < l; i++)
 			{
-                Vec3 lightDir = Vec3.Normalize(light - (Vec3)v);
-                double a = Vec3.MultiplyScalar(n, lightDir);
+                Vec3 lightDir = light - (Vec3)v;
+                double a = Vec3.MultiplyScalar(n, Vec3.Normalize(lightDir));
                 a = System.Math.Max(a, 0);
                 
-				Vec3 r = 2 * (n * lightDir) * n - lightDir;
-				BColor iS = specularColor * Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos - (Vec3)v)) * 0.05;
+				Vec3 r = 2 * Vec3.Normalize(n) * Vec3.MultiplyScalar(lightDir, Vec3.Normalize(n)) - lightDir;
+				double b = Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos + target - (Vec3)v));
+                BColor iS = specularColor * System.Math.Pow(System.Math.Max(b, 0), 2);
                 BColor color = ambientLightColor + diffuseLightColor * a + iS;
 
                 if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
@@ -358,6 +349,12 @@ namespace AKG
 					return p;
 				})
 				.ToList();
+
+			//multipliedNormals = normals
+			//	.Select(n =>
+			//	{
+			//		//n = n * view * projection;
+			//	});
 		}
 
 		private void ProcessMouseInput()
