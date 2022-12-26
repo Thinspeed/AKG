@@ -63,11 +63,11 @@ namespace AKG
 		private Mat4 projection;
 		private Mat4 viewPort;
 		private Mat4 rotate;
-		private Vec3 cameraPos = new Vec3(0, 50, 100);	
+		private Vec3 cameraPos = new Vec3(0, 2, 10);	
 		private Vec3 target;
 		private Vec3 right;
 		private Vec3 up;
-		private Vec3 light => new Vec3(0, 100, 100);
+		private Vec3 light => new Vec3(0, 10, 10);
 
         private const double ambientLightK = 0.1;
         private BColor ambientLightColor = new BColor(255, 255, 255) * ambientLightK;
@@ -84,11 +84,13 @@ namespace AKG
 			InitializeComponent();
 
             //D:\\Models\\Intergalactic Spaceship\\
+            //D:\\Models\\Pink Soldier\\
             model = new Model()
 			{
-				Polygons = Parser.ParserObj("D:\\Models\\Pink Soldier\\Model.obj"),
-				Diffuse = new System.Drawing.Bitmap("D:\\Models\\Pink Soldier\\BaseColor Map.png"),
-				NormalMap = new System.Drawing.Bitmap("D:\\Models\\Pink Soldier\\Normal Map.png"),
+				Polygons = Parser.ParserObj("D:\\Models\\Intergalactic Spaceship\\Model.obj"),
+				Diffuse = new System.Drawing.Bitmap("D:\\Models\\Intergalactic Spaceship\\BaseColor Map.jpg"),
+				NormalMap = new System.Drawing.Bitmap("D:\\Models\\Intergalactic Spaceship\\Normal Map.png"),
+				MRAOMap = new System.Drawing.Bitmap("D:\\Models\\Intergalactic Spaceship\\MRAO Map.png")
             };
 
 			positions = Parser.VertexPositions;
@@ -147,14 +149,12 @@ namespace AKG
 			inputTimer.Start();
 		}
 
-		private (List<(Vec4, Vec4)> pos, List<(Vec4, Vec4)> ver, List<(Vec3, Vec3)> norm, List<(Vec3, Vec3)> texture) GetLines(
+		private (List<(Vec4, Vec4)> pos, List<(Vec4, Vec4)> ver, List<(Vec3, Vec3)> texture) GetLines(
 			int index1, int index2, int index3,
-			int indexN1, int indexN2, int indexN3,
 			int indexT1, int indexT2, int indexT3)
 		{
 			var p = new List<(Vec4, Vec4)>();
 			var v = new List<(Vec4, Vec4)>();
-			var n = new List<(Vec3, Vec3)>();
 			var t = new List<(Vec3, Vec3)>();
 
 			var point1 = multipliedPostions[index1];
@@ -164,10 +164,6 @@ namespace AKG
 			var vertex1 = positions[index1];
 			var vertex2 = positions[index2];
 			var vertex3 = positions[index3];
-
-			var normal1 = normals[indexN1];
-			var normal2 = normals[indexN2];
-			var normal3 = normals[indexN3];
 
 			var texture1 = textures[indexT1];
             var texture2 = textures[indexT2];
@@ -187,13 +183,6 @@ namespace AKG
             double deltaVZ1 = vertex3.Z - vertex1.Z;
             double deltaVZ2 = vertex3.Z - vertex2.Z;
 
-            double deltaNX1 = normal3.X - normal1.X;
-			double deltaNX2 = normal3.X - normal2.X;
-			double deltaNY1 = normal3.Y - normal1.Y;
-            double deltaNY2 = normal3.Y - normal2.Y;
-            double deltaNZ1 = normal3.Z - normal1.Z;
-            double deltaNZ2 = normal3.Z - normal2.Z;
-
             double deltaTX1 = texture3.X - texture1.X;
             double deltaTX2 = texture3.X - texture2.X;
             double deltaTY1 = texture3.Y - texture1.Y;
@@ -209,9 +198,6 @@ namespace AKG
 				vx1 = vertex1.X, vx2 = vertex2.X,
 				vy1 = vertex1.Y, vy2 = vertex2.Y,
 				vz1 = vertex1.Z, vz2 = vertex2.Z,
-				nx1 = normal1.X, nx2 = normal2.X,
-				ny1 = normal1.Y, ny2 = normal2.Y,
-				nz1 = normal1.Z, nz2 = normal2.Z,
 				tx1 = texture1.X, tx2 = texture2.X,
 				ty1 = texture1.Y, ty2 = texture2.Y;
 
@@ -219,7 +205,6 @@ namespace AKG
 			{
 				p.Add((new Vec4(x1, y1, z1, 1), new Vec4(x2, y2, z2, 1)));
 				v.Add((new Vec4(vx1, vy1, vz1, 1), new Vec4(vx2, vy2, vz2, 1)));
-				n.Add((new Vec3(nx1, ny1, nz1), new Vec3(nx2, ny2, nz2)));
 				t.Add((new Vec3(tx1, ty1, 0), new Vec3(tx2, ty2, 0)));
 
 				x1 += deltaX1 / l;
@@ -242,7 +227,7 @@ namespace AKG
                 ty2 += deltaTY2 / l;
             }
 
-			return (p, v, n, t);
+			return (p, v, t);
 		}
 
 		unsafe private void DrawModel()
@@ -274,16 +259,14 @@ namespace AKG
 				{
                     List<(Vec4, Vec4)> p;
                     List<(Vec4, Vec4)> v;
-                    List<(Vec3, Vec3)> n;
 					List<(Vec3, Vec3)> t;
 
-                    (p, v, n, t) = GetLines(model.Polygons[i].Vertices[0].Position, model.Polygons[i].Vertices[1].Position, model.Polygons[i].Vertices[2].Position,
-                        model.Polygons[i].Vertices[0].Normal, model.Polygons[i].Vertices[1].Normal, model.Polygons[i].Vertices[2].Normal,
+                    (p, v, t) = GetLines(model.Polygons[i].Vertices[0].Position, model.Polygons[i].Vertices[1].Position, model.Polygons[i].Vertices[2].Position,
                         model.Polygons[i].Vertices[0].Texture, model.Polygons[i].Vertices[1].Texture, model.Polygons[i].Vertices[2].Texture);
 
                     for (int j = 0; j < p.Count; j++)
                     {
-                        DrawLine(bmp, p[j].Item1, p[j].Item2, v[j].Item1, v[j].Item2, n[j].Item1, n[j].Item2, t[j].Item1, t[j].Item2);
+                        DrawLine(bmp, p[j].Item1, p[j].Item2, v[j].Item1, v[j].Item2, t[j].Item1, t[j].Item2);
                     }
                 }
 			}
@@ -296,7 +279,6 @@ namespace AKG
 		unsafe private void DrawLine(WriteableBitmap bmp,
 			Vec4 point1, Vec4 point2,
 			Vec4 vertex1, Vec4 vertex2,
-			Vec3 normal1, Vec3 normal2,
 			Vec3 texture1, Vec3 texture2)
 		{
 			double deltaX = point2.X - point1.X;
@@ -307,20 +289,15 @@ namespace AKG
             double deltaVY = vertex2.Y - vertex1.Y;
             double deltaVZ = vertex2.Z - vertex1.Z;
 
-            double deltaNX = normal2.X - normal1.X;
-            double deltaNY = normal2.Y - normal1.Y;
-            double deltaNZ = normal2.Z - normal1.Z;
-
             double deltaTX = texture2.X - texture1.X;
             double deltaTY = texture2.Y - texture1.Y;
 
             int l = System.Math.Abs(deltaX) > System.Math.Abs(deltaY) ? (int)System.Math.Abs(deltaX) : (int)System.Math.Abs(deltaY);
-			double x = point1.X, y = point1.Y, z = point1.Z;
+			double x = point1.X - deltaX / l, y = point1.Y - deltaY / l, z = point1.Z - deltaZ / l;
 			Vec4 v = vertex1;
-			Vec3 n = normal1;
-			Vec3 t = texture1;
+			Vec3 n, t = texture1;
 
-            for (int i = 0; i < l; i++)
+            for (int i = 0; i < l + 2; i++)
 			{
 				n = model.GetNormal(t.X, t.Y);
                 Vec3 lightDir = light - (Vec3)v;
@@ -329,7 +306,7 @@ namespace AKG
                 
 				Vec3 r = 2 * Vec3.Normalize(n) * Vec3.MultiplyScalar(lightDir, Vec3.Normalize(n)) - lightDir;
 				double b = Vec3.MultiplyScalar(Vec3.Normalize(r), Vec3.Normalize(cameraPos + target - (Vec3)v));
-                BColor iS = specularColor * System.Math.Pow(System.Math.Max(b, 0), 2);
+                BColor iS = specularColor * System.Math.Pow(System.Math.Max(b, 0), 2) * model.GetSpecularK(t.X, t.Y);
                 BColor color = ambientLightColor + (model.GetPixelColor(t.X, t.Y) * a) + iS;
 
                 if (x >= 0 && x < bmp.Width && y >= 0 && y < bmp.Height)
@@ -346,16 +323,12 @@ namespace AKG
 				y += deltaY / l;
 				z += deltaZ / l;
 
-                v.X += deltaVX / l;
-                v.Y += deltaVY / l;
-                v.Z += deltaVZ / l;
+                v.X += deltaVX / (l + 2);
+                v.Y += deltaVY / (l + 2);
+                v.Z += deltaVZ / (l + 2);
 
-                n.X += deltaNX / l;
-				n.Y += deltaNY / l;
-				n.Z += deltaNZ / l;
-
-				t.X += deltaTX / l;
-				t.Y += deltaTY / l;
+				t.X += deltaTX / (l + 2);
+				t.Y += deltaTY / (l + 2);
 			}
 		}
 

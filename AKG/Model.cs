@@ -16,7 +16,9 @@ namespace AKG
 
 		public Bitmap? NormalMap { get; set; }
 
-		public BColor GetPixelColor(double u, double v)
+        public Bitmap? MRAOMap { get; set; }
+
+        public BColor GetPixelColor(double u, double v)
 		{
 			if (Diffuse == null)
 			{
@@ -43,5 +45,19 @@ namespace AKG
 
 			return new Vec3((double)temp.R * 2 / 255 - 1, (double)temp.G * 2 / 255 - 1, (double)temp.B * 2 / 255 - 1);
 		}
+
+		public double GetSpecularK(double u, double v)
+		{
+			if (MRAOMap == null)
+			{
+				return 0;
+			}
+
+            int x = (int)(MRAOMap.Width * u);
+            int y = (int)(MRAOMap.Height * (1 - v));
+            Color temp = MRAOMap.GetPixel(x, y);
+
+			return (1 - (double)temp.G / 255);
+        }
 	}
 }
